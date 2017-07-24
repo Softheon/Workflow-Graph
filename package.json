@@ -1,0 +1,39 @@
+{
+  "name": "@softheon/workflow-graph",
+  "version": "1.1.22",
+  "description": "Module for drawing workflow graphs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Softheon/Workflow-Graph.git"
+  },
+  "keywords": [
+    "workflow",
+    "graph",
+    "workflow-graph",
+    "workflow graph"
+  ],
+  "author": "Elizabeth Board",
+  "license": "MIT",
+  "dependencies": {
+    "@angular/animations": "^4.0.0",
+    "@angular/common": "^4.0.0",
+    "@angular/compiler": "^4.0.0",
+    "@angular/core": "^4.0.0",
+    "@angular/forms": "^4.0.0",
+    "@angular/http": "^4.0.0",
+    "@angular/platform-browser": "^4.0.0",
+    "@angular/platform-browser-dynamic": "^4.0.0",
+    "@angular/router": "^4.0.0",
+    "core-js": "^2.4.1",
+    "rxjs": "^5.1.0",
+    "zone.js": "^0.8.4"
+  },
+  "peerDependencies": {
+    "@types/d3": "^4.9.0",
+    "d3": "^4.9.1"
+  }
+}
