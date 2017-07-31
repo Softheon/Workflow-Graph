@@ -1,0 +1,25 @@
+<div id="wrapper">
+    <span *ngIf="showZoom" id="scale">{{scale}}%</span>
+    <button *ngIf="showZoom" id="show-all" (click)="showAll()">Show All</button>
+
+    <div id="zoom" [ngClass]="{'open': showZoom, 'closed': !showZoom}">
+        <button *ngIf="!showZoom" id="zoom-toggle" (click)="showZoom = true">zoom</button>
+        <span *ngIf="showZoom">
+            <button id="zoom-out-button" (click)="zoomIn()">+</button>
+            <input 
+                type="range" 
+                min="10" 
+                max="200" 
+                value="100" 
+                name="range" 
+                (mousemove)="buildGraph()" 
+                [(ngModel)]="scale">
+            <button id="zoom-in-button" (click)="zoomOut()">-</button>
+            
+        </span>
+
+    </div>
+
+    <div id="workflowgraph" (click)="showZoom = false">
+    </div>
+</div>

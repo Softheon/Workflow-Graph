@@ -1,49 +1,73 @@
 import { Injectable } from '@angular/core';
 
+import { Edge } from './classes/edge';
+import { Node } from './classes/node';
+import { Graph } from './classes/graph';
+import { Coordinate } from './classes/coordinate';
+import { Depth } from './classes/depth';
+
 @Injectable()
 export class WorkflowGraphService {
-    // returns an object representing a graph in the form { parentId: [array of childrenIDs], etc}
-    getGraph(edges) : any {
-        let graph : any = {};
-        let edge : any, startNode : number, endNode : number;
+    public getGraph(edges: Edge[]): Graph[] {
+        let graph: Graph[] = [];
+        let edge: Edge;
+        let startNodeIndex: number;
+        let endNodeIndex: number;
         for (var i = 0; i < edges.length; i++) {
             edge = edges[i];
-            startNode = edge.source;
-            endNode = edge.end;
-            if (!graph.hasOwnProperty(startNode)) {
-                graph[startNode] = [];
+            startNodeIndex = edge.source;
+            endNodeIndex = edge.end;
+            if (!this.getChildren(graph, startNodeIndex)) {
+                graph.push({
+                    "parentId": startNodeIndex,
+                    "children": []
+                });
             }
-            graph[startNode].push(endNode);
+            this.getChildren(graph, startNodeIndex).push(endNodeIndex)
         }
-        console.log("graph", graph)
         return graph;
     }
 
-    // returns an object in the form { id: depth, etc }
-    getDepths(nodes, graph : any, startNode : number) : any {
+    private getChildren(graph: Graph[], parentId: number): number[] {
+        let parent: Graph = graph.find(thisParent => { 
+            return thisParent.parentId === parentId 
+        });
+        if (parent) return parent.children; 
+    }
+
+    private getDepth(depths: Depth[], node): Depth {
+        return depths.find(d => { 
+            return d.nodeId === node 
+        });
+    }
+
+    public getDepths(nodes: Node[], graph: Graph[], startNode: number): Depth[] {
         if (!graph || !startNode) return null;
-        let currentNode : number = startNode;
-        let queue : number[] = [startNode];
-        let depths : any = {};
-        let currentDepth : number = 0;
-        let leftInLevel : number = 1;
-        let nextLeftInLevel : number = 0;
-        let children : number[], child : number;
+        let currentNode: number = startNode;
+        let queue: number[] = [startNode];
+        let depths: Depth[] = [];
+        let currentDepth: number = 0;
+        let leftInLevel: number = 1;
+        let nextLeftInLevel: number = 0;
+        let children: number[], child: number;
 
         // doing a BFS to find the depths of the nodes in the graph
         while (queue) {
             currentNode = queue.shift();
-            children = graph[currentNode];
-            depths[currentNode] = currentDepth;
+            children = this.getChildren(graph, currentNode);
+            depths.push({
+                "nodeId": currentNode,
+                "depth": currentDepth
+            });
 
             // check if you're done
             if (!children) { break; }
 
             for (let i = 0; i < children.length; i++) {
                 child = children[i]
-                if (!depths.hasOwnProperty(child) && !queue.includes(child))
+                if (!this.getDepth(depths, child) && !queue.includes(child))
                     nextLeftInLevel++;
-                if (!depths.hasOwnProperty(child) && !queue.includes(child)) {
+                if (!this.getDepth(depths, child) && !queue.includes(child)) {
                     queue.push(child);
                 }
             }
@@ -56,83 +80,82 @@ export class WorkflowGraphService {
             }
         }
         for (var node of nodes) {
-            if (!depths[node.id])
-                depths[node.id] = 0;
+            if (!this.getDepth(depths, node.id))
+                depths.push({
+                    nodeId: node.id,
+                    depth: 0
+                });
         }
         return depths;
     }
 
     // returns an object in the form { level index: [ids of the nodes in that level], etc }
-    getNodesByLevel(depths : any) : any {
-        let levels : any = {};
-        for (let node in depths) {
-            if (levels[depths[node]]) {
-                levels[depths[node]]++;
+    public getLevelCounts(depths: Depth[]): any {
+        let levels: any = {};
+        for (let node of depths) {
+            if (levels[node.depth]) {
+                levels[node.depth]++;
             }
             else {
-                levels[depths[node]] = 1;
+                levels[node.depth] = 1;
             }
         }
         return levels;
     }
 
-    findNode(nodes, node) {
-        let thisNode = nodes.find(thisNode => { return thisNode.id === parseInt(node); });
+    private findNode(nodes: Node[], nodeId: number): Node {
+        let thisNode: Node = nodes.find(thisNode => { return thisNode.id === nodeId; });
         return thisNode;
     }
 
-    // returns an object in the form {id: {id: _, name: _, url: _, x: _, y: _}, etc}
-    getNodeInfo(depths: any, levelCounts:any, sideMargin: number, nodeMargin: number, 
-        rectWidth: number, windowHeight: number, nodes, urls: any) {
-        let nodeInfo = [];
-        let levelPositions = {};
+    public getNodeInfo(depths: Depth[], levelCounts:any, sideMargin: number, nodeMargin: number, 
+            rectWidth: number, windowHeight: number, nodes: Node[], urls: (string) => string): Node[] {
+        let nodeInfo: Node[] = [];
+        let levelPositions: any = {};
         let getX = (level) => { return sideMargin + level * (rectWidth + nodeMargin); }
         let getY = (level) => { return windowHeight / (level + 1); }
 
-        for (let node in depths) {
-            let depth = depths[node];
-            let y = getY(levelCounts[depth]);
+        for (let node of depths) {
+            let depth = this.getDepth(depths, node.nodeId).depth;
+            let y: number = getY(levelCounts[depth]);
+            let currentNode: Node = this.findNode(nodes, node.nodeId);
+            let newNode: Node = currentNode;
+            let thisUrl = (currentNode.url) ? currentNode.url: urls(node.nodeId);
+
             if (!levelPositions[depth]) levelPositions[depth] = 0;
             levelPositions[depth] += y;
 
-            let currentNode = this.findNode(nodes, node);
-            let thisUrl = null;
-            // let thisUrl = (currentNode.url) ? currentNode.url : urls(node);
-
-            let newNode = currentNode;
-            newNode.id = node;
+            newNode.id = node.nodeId;
             newNode.x = getX(depth);
             newNode.y = levelPositions[depth];
+            newNode.url = thisUrl;
             nodeInfo.push(newNode);
-           // nodeInfo[node].url = thisUrl;
         }
         return nodeInfo;
     }
 
-
-    // returns the starting and endidng coordinates of the edges as an array of objects: 
-    // [{ bend: isBending, x1:_, y1:_, x2:_, y2:_ }, etc ]
-    getArrowCoordinates(edges, nodeInfo : any[], rectWidth : number, rectHeight : number, windowHeight : number) : any[] {
-        let arrowCoordinates : any[] = [];
-        let straightArrows = false;
+    public getArrowCoordinates(edges: Edge[], nodeInfo: Node[], rectWidth: number, rectHeight: number, 
+            windowHeight: number, straightArrows: boolean): Coordinate[] {
+        let arrowCoordinates: Coordinate[] = [];
         for (let i = 0; i < edges.length; i++) {
-            let sourceId : number = edges[i].source;
-            let source = nodeInfo.find(thisNode => { return parseInt(thisNode.id) === sourceId; });
-            // let source = this.findNode(nodeInfo, sourceId).id;
-            let endId : number = edges[i].end;
-            let end = nodeInfo.find(thisNode => { return parseInt(thisNode.id) === endId; });
-            let x1 : number = source.x;
-            let y1 : number = source.y;
-            let x2 : number = end.x;
-            let y2 : number = end.y;
+            let sourceId: number = edges[i].source;
+            let source: Node = this.findNode(nodeInfo, sourceId);
+            let endId: number = edges[i].end;
+            let end: Node = this.findNode(nodeInfo, endId);
+            let x1: number = source.x;
+            let y1: number = source.y;
+            let x2: number = end.x;
+            let y2: number = end.y;
 
             if (straightArrows) {
+                let goingDown = y2 < y1 ? 1 : -1;
+                goingDown = y2 === y1 ? 0 : goingDown;
                 arrowCoordinates.push({
                     bend: false,
                     x1: x1 + rectWidth,
                     y1: y1,
                     x2: x2 - 7,
-                    y2: y2
+                    y2: y2 + (Math.min(rectHeight/4, Math.abs(y2-y1)/15))*goingDown
                 })
             } else {
                 // Taking care of the different cases for arrow directions
@@ -148,13 +171,12 @@ export class WorkflowGraphService {
                         x1: x1 + rectWidth,
                         y1: y1,
                         x2: x2 - 7,
-                        y2: y2
+                        y2: y2 
                     })
                 } else if (y1 < y2) { 
                     if (y1 === windowHeight / 2) { // SW
                         arrowCoordinates.push({
                             bend: true,
-                            direction: "SW",
                             x1: x1 + rectWidth / 2 + 5,
                             y1: y1 + rectHeight / 2,
                             x2: x1 + rectWidth / 2 + 5,
@@ -170,7 +192,6 @@ export class WorkflowGraphService {
                     } else { // NE
                         arrowCoordinates.push({
                             bend: true,
-                            direction: "NE",
                             x1: x1 + rectWidth,
                             y1: y1,
                             x2: x2 + rectWidth / 2- 5,
@@ -184,11 +205,11 @@ export class WorkflowGraphService {
                             y2: y2 - rectHeight / 2 - 7
                         })
                     }
-                } else { 
+                } 
+                else { 
                     if (y1 === windowHeight / 2) { // NW
                         arrowCoordinates.push({
                             bend: true,
-                            direction: "NW",
                             x1: x1 + rectWidth / 2 + 5,
                             y1: y1 - rectHeight / 2,
                             x2: x1 + rectWidth / 2 + 5,
@@ -204,7 +225,6 @@ export class WorkflowGraphService {
                     } else { // SE
                         arrowCoordinates.push({
                             bend: true,
-                            direction: "SE",
                             x1: x1 + rectWidth,
                             y1: y1,
                             x2: x2 + rectWidth / 2 - 5,
@@ -223,4 +243,5 @@ export class WorkflowGraphService {
         }
         return arrowCoordinates;
     }
+
 }
